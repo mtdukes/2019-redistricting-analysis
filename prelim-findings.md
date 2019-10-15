@@ -8,7 +8,7 @@ Expert witness and Duke University Mathematics Professor Jonathan Mattingly [use
 
 Those distributions, judges said, helped demonstrate how the actual maps performed relative to what's "normal."
 
-So WRAL News repeated that analysis, resorting votes from 2016 statewide races to see how Republicans and Democrats would perform under the maps drawn by legislators in September 2019.
+[So WRAL News repeated that analysis](https://github.com/mtdukes/2019-redistricting-analysis/blob/master/redistricting_analysis.sql), resorting votes from 2016 statewide races to see how Republicans and Democrats would perform under the maps drawn by legislators in September 2019.
 
 ### Overview
 
