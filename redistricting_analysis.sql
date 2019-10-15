@@ -2,8 +2,8 @@
 The commands below import, clean and analyze data from the 2010 Census and the remedial NC House and Senate maps redrawn in September 2019 in response to a court order.
 
 The queries use the following tables:
-~ 2016_results ~
-Election results from 2016 sorted into precincts, sourced from the NC State Board of Elections at the following URL: https://s3.amazonaws.com/dl.ncsbe.gov/ENRS/2016_11_08/precinct%20sort/precinct_sort_20161108.zip NOTE: Contains derived fields, described in detail below.
+~ 2016_results_correx ~
+Election results from 2016 sorted into precincts, requested from the NC State Board of Elections at the following URL: https://dl.ncsbe.gov/index.html?prefix=Requests/Dukes_Tyler/2016-11-08/ This version applies additional precinct sorting compared a previous file posted on the BOE site, for more accurate results. Files for individual counties were combined into one table. NOTE: Contains derived fields, described in detail below.
 
 ~ 2019_house_baf ~
 Block assignment file for the 2019 remedial maps linking new NC House districts to their respective Census blocks. Sourced from the legislature at the following URL: https://www.ncleg.gov/documentsites/committees/house2019-182/09-13-2019/HB%201020%20H%20Red%20Comm%20PCS%20corrected%20v2_baf.zip
@@ -19,6 +19,9 @@ File created by WRAL to note the districts redrawn during the 2019 remedial proc
 
 ~fips~
 Table is a simple list of counties and fips codes, used for matching precincts with counties, since precinct names aren't unique
+
+~meck_weights~
+Table deriveded from the N.C. State Board of Elections data showing the precincts associated with each ballot style, along with their active voters. Used to weight the nearly 8,000 unsorted votes from Mecklenburg County into their estimated precincts. NOTE: This additional weighting did not change the overall findings.
 
 ~ geo_header ~
 One of three Census redistricting files that describe the demographics gathered and caculated for the 2010 Census. This file contains the State/County/Tract/Block IDs link to the logical record number, which can then be linked to the other two tables. Sourced from the U.S. Census at the following URL: https://www2.census.gov/census_2010/01-Redistricting_File--PL_94-171/
@@ -1076,17 +1079,45 @@ AND x.block IS NOT NULL;
 STEP FOUR: Precinct analysis
 Data cleaning and analysis to match 2016 results to our new districts
 */
-#Add the fips code to our 2016_results file so we can construct a matching string
-#create the column in the results table
-ALTER TABLE 2016_results
+#after importing data for 2016_results_correx
+#change our column names to match our old resuls table
+#county -> county_desc
+#contest_title -> contest_name
+
+#add fips code to our results file
+ALTER TABLE 2016_results_correx
 ADD COLUMN
 county_fips VARCHAR(5)
 AFTER county_desc;
 
 #set the field to match the fips code
-UPDATE 2016_results, fips
-SET 2016_results.county_fips = fips.fips
-WHERE 2016_results.county_desc = fips.county;
+UPDATE 2016_results_correx, fips
+SET 2016_results_correx.county_fips = fips.fips
+WHERE 2016_results_correx.county_desc = fips.county;
+
+#lets get rid of everything but the races we're interested in
+#'1001_US PRESIDENT'
+#'1001_PRESIDENT AND VICE PRESIDENT OF THE UNITED STATES'
+#'1002_US SENATE'
+#'1002_UNITED STATES SENATE'
+#'1016_NC GOVERNOR'
+#'1395_NC LIEUTENANT GOVERNOR'
+#'1022_NC ATTORNEY GENERAL'
+DELETE FROM 2016_results_correx
+WHERE LEFT(contest_name,4) <> '1001' AND
+LEFT(contest_name,4) <> '1002' AND
+LEFT(contest_name,4) <> '1016' AND
+LEFT(contest_name,4) <> '1395' AND
+LEFT(contest_name,4) <> '1022';
+
+#add a derived precinct_name to separate out precinct details
+ALTER TABLE 2016_results_correx
+ADD COLUMN
+precinct_code VARCHAR(255)
+AFTER precinct_name;
+
+UPDATE 2016_results_correx
+SET 2016_results_correx.precinct_code = LEFT(precinct_name,LOCATE('_',precinct_name) - 1);
 
 #to simplify/speed up our queries, lets go ahead and construct a block id
 #from the state/county fips code, tract and block
@@ -1105,34 +1136,26 @@ CREATE INDEX block_to_precinct_idx ON
 block_to_precinct (block_id);
 
 #make an index for our 2016_results file
-CREATE INDEX 2016_results_idx ON
-2016_results (county_fips, precinct_code, contest_name, candidate_name);
+CREATE INDEX 2016_results_correx_idx ON
+2016_results_correx (county_fips, precinct_code, contest_name, candidate_name);
 
+#add precinct_id
 #create a new column in our results file for quicker matching
 #this will use the precinct_id constructed of the code and the county
-ALTER TABLE 2016_results
+ALTER TABLE 2016_results_correx
 ADD COLUMN
 precinct_id VARCHAR(255)
-AFTER precinct_desc;
+AFTER precinct_code;
 
-UPDATE 2016_results
-SET 2016_results.precinct_id = CONCAT(2016_results.county_fips, 2016_results.precinct_code);
-
-#get the total number of votes Cooper, McCrory received in 2016
-#COOPER 2,309,128
-#MCCRORY 2,298,966
-SELECT candidate_name, SUM(votes) as vote_total
-FROM 2016_results
-WHERE contest_name = 'NC GOVERNOR'
-GROUP BY candidate_name
-ORDER BY vote_total DESC;
+UPDATE 2016_results_correx
+SET 2016_results_correx.precinct_id = CONCAT(2016_results_correx.county_fips, 2016_results_correx.precinct_code);
 
 #replace the spaces in the 2016 results file with underscores to better match our block_to_precinct file
 #let's do this in precinct_id so we don't mess with our original data
-UPDATE 2016_results
+UPDATE 2016_results_correx
 SET precinct_id = replace(precinct_id, ' ', '_');
 
-UPDATE 2016_results
+UPDATE 2016_results_correx
 SET precinct_id = replace(precinct_id, '#', '');
 
 #correct our btp_precincts by adding in rows that correspond with the split wake precincts
@@ -1165,25 +1188,102 @@ SELECT state_fips, county_fips, tract, block, block_id, '19-04' AS precinct, 1 A
 FROM block_to_precinct
 WHERE county_fips = '183' AND (precinct = '19-20' OR precinct = '19-21' );
 
-#let's check our unsorted vote totals again
-SELECT 2016_results.precinct_id AS results_precinct,
-	SUM(2016_results.votes) as total_votes
-FROM 2016_results
-LEFT JOIN (
-	SELECT CONCAT(state_fips, county_fips, precinct) AS precinct_id
-	FROM block_to_precinct
-	GROUP BY CONCAT(state_fips, county_fips, precinct)
-	) as x
-ON 2016_results.precinct_id = x.precinct_id
-WHERE x.precinct_id IS NULL
-AND (2016_results.candidate_name = 'Pat McCrory')
-GROUP BY 2016_results.precinct_id WITH ROLLUP;
+#check to see how many unmatched rows we have
+SELECT x.*, fips.county
+FROM (
+	SELECT LEFT(2016_results_correx.precinct_id, 5) AS results_precinct,
+		2016_results_correx.precinct_name,
+		SUM(2016_results_correx.votes) as total_votes
+	FROM 2016_results_correx
+	LEFT JOIN (
+		SELECT CONCAT(state_fips, county_fips, precinct) AS precinct_id
+		FROM block_to_precinct
+		GROUP BY CONCAT(state_fips, county_fips, precinct)
+		) as x
+	ON 2016_results_correx.precinct_id = x.precinct_id
+	WHERE x.precinct_id IS NULL
+	AND (2016_results_correx.candidate_name = 'Roy Cooper' OR 2016_results_correx.candidate_name = 'Pat McCrory')
+	#GROUP BY LEFT(2016_results_correx.precinct_id, 5) WITH ROLLUP
+	GROUP BY LEFT(2016_results_correx.precinct_id, 5), 2016_results_correx.precinct_name WITH ROLLUP
+	HAVING total_votes != 0
+) as x
+LEFT JOIN fips
+ON x.results_precinct = fips.fips
+ORDER BY county, total_votes DESC;
+
+#Show the results in Mecklenburg
+SELECT DISTINCT precinct_name, county_desc, precinct_id
+FROM 2016_results_correx
+WHERE county_desc = 'Mecklenburg'
+GROUP BY precinct_name, county_desc, precinct_id;
+
+#mecklenburg has a lot of unmatched precincts
+#update our mecklenburg rows so we can parse out our problem
+UPDATE 2016_results_correx
+SET 2016_results_correx.precinct_id = CONCAT(precinct_id,RIGHT(precinct_name,5))
+WHERE precinct_code = '' AND county_desc = 'Mecklenburg';
+
+UPDATE 2016_results_correx
+SET precinct_id = replace(precinct_id, ' ', '0')
+WHERE precinct_code = '' AND county_desc = 'Mecklenburg'; 
+
+#add a derived column to the 2016_results_correx table
+ALTER TABLE 2016_results_correx
+ADD COLUMN
+derived VARCHAR(1);
+
+UPDATE 2016_results_correx
+SET 2016_results_correx.derived = '0';
+
+#generate a results table that we can use
+INSERT INTO 2016_results_correx
+SELECT county_id,
+	county_desc,
+	county_fips,
+	election_dt,
+	result_type_lbl,
+	result_type_desc,
+	contest_id,
+	contest_name,
+	contest_party_lbl,
+	contest_vote_for,
+	precinct_cd,
+	precinct_name,
+	precinct_code,
+	CONCAT(LEFT(precinct_id,5), meck_weights.precinct) AS precinct_id,
+	candidate_id,
+	candidate_name,
+	candidate_party_lbl,
+	group_num,
+	group_name,
+	voting_method_lbl,
+	voting_method_rslt_desc,
+	ROUND(votes * meck_weights.weight) AS votes,
+	1 AS derived
+FROM 2016_results_correx
+LEFT JOIN meck_weights
+ON meck_weights.unsorted_precinct = RIGHT(2016_results_correx.precinct_id,5)
+WHERE county_desc = 'Mecklenburg' AND precinct_cd > 200 AND (candidate_party_lbl = 'DEM' OR candidate_party_lbl = 'REP')
+HAVING votes > 0;
 
 #our resulting query tallying up the votes from the 2016 election results and tying them
 #back to each individual Census block and susequent new House district
 #run the top two select statements first to set your candidates appropriately
 SELECT @dem_candidate := 'Roy Cooper';
 SELECT @gop_candidate := 'Pat McCrory';
+
+SELECT @dem_candidate := 'Hillary Clinton';
+SELECT @gop_candidate := 'Donald J. Trump';
+
+SELECT @dem_candidate := 'Deborah K. Ross';
+SELECT @gop_candidate := 'Richard Burr';
+
+SELECT @dem_candidate := 'Josh Stein';
+SELECT @gop_candidate := 'Buck Newton';
+
+SELECT @dem_candidate := 'Linda Coleman';
+SELECT @gop_candidate := 'Dan Forest';
+
 SELECT dem_candidate.house_district,
 	dem_candidate.dem_votes,
 	gop_candidate.gop_votes,
@@ -1191,13 +1291,10 @@ SELECT dem_candidate.house_district,
 	IF( ROUND((dem_candidate.dem_votes / (dem_candidate.dem_votes + gop_candidate.gop_votes)) * 100,1) > 50, 1, 0) AS dem_win
 FROM (
 	#query to combine our votes with our districts and roll up
-	#121 results -> note: we are limiting this to precinct so we can examine...
-	#for district 1, displays 40 precincts
 	SELECT x.district as house_district,
 		SUM(corrected_votes.adjusted_votes) AS dem_votes
 	FROM (
 		#query to match our precinct_id to our district through our block
-		#2,749 results -> 40 precincts for district 1, 20 precincts for district 2
 		SELECT DISTINCT CONCAT(LEFT(2019_house_baf.block,5), block_to_precinct.precinct) as precinct_id,
 			2019_house_baf.district
 		FROM 2019_house_baf
@@ -1206,7 +1303,6 @@ FROM (
 		) as x
 	LEFT JOIN (
 		#query to combine our corrected vote totals for dem_candidate
-		#2,688 results - includes duplicates -> gives us 37 precincts for district 1, 18 precincts for district 2
 		SELECT q1.precinct_id, 
 			q1.district, 
 			q1.dem_votes,
@@ -1214,18 +1310,16 @@ FROM (
 			ROUND(q1.dem_votes * ( IF(q2.weight IS NULL, 100, q2.weight) / 100) ) as adjusted_votes
 		FROM (
 			#initial query to join the number of candidates votes with precinct and district
-			#2,688 rows - contains duplicates and duplicate values for candidate votes for split precinct-district pairs
 			SELECT a.precinct_id,
 				b.district, 
 				a.dem_votes
 			FROM (
 				#query to link the precinct ID to the total vote count of the given candidate from results file
 				SELECT x.precinct_id, 
-					SUM(2016_results.votes) AS dem_votes, 
+					SUM(2016_results_correx.votes) AS dem_votes, 
 					COUNT(x.precinct_id) AS precinct_count
 				FROM (
 					#query to link precinct_id with each district
-					#this is where we were double counting, removed district from distinct
 					SELECT DISTINCT CONCAT(LEFT(2019_house_baf.block,5),
 						block_to_precinct.precinct) as precinct_id
 					FROM 2019_house_baf
@@ -1233,21 +1327,19 @@ FROM (
 					ON 2019_house_baf.block = block_to_precinct.block_id
 					#end query
 				) as x
-				LEFT JOIN 2016_results
-				ON 2016_results.precinct_id = x.precinct_id
-				WHERE 2016_results.candidate_name = @dem_candidate
+				LEFT JOIN 2016_results_correx
+				ON 2016_results_correx.precinct_id = x.precinct_id
+				WHERE 2016_results_correx.candidate_name = @dem_candidate
+				#AND 2016_results_correx.derived = 0
 				GROUP BY x.precinct_id
 				#end query
 			) as a
 			LEFT JOIN (
 				#query to link precinct_id with district
-				#only difference is that this is grouped by precinct and district
-				#2,688 results - contains duplicate rows with different districts
 				SELECT x.precinct_id,
 					x.district
 				FROM (
 					#query to link precinct_id with each district (dupe of above)
-					#2,749 results - no duplciate precinct-district pairs
 					SELECT DISTINCT CONCAT(LEFT(2019_house_baf.block,5),
 						block_to_precinct.precinct) as precinct_id,
 						2019_house_baf.district
@@ -1256,9 +1348,10 @@ FROM (
 					ON 2019_house_baf.block = block_to_precinct.block_id
 					#end query
 				) AS x
-				LEFT JOIN 2016_results
-				ON 2016_results.precinct_id = x.precinct_id
-				WHERE 2016_results.candidate_name = @dem_candidate
+				LEFT JOIN 2016_results_correx
+				ON 2016_results_correx.precinct_id = x.precinct_id
+				WHERE 2016_results_correx.candidate_name = @dem_candidate
+				#AND 2016_results_correx.derived = 0
 				GROUP BY x.precinct_id, x.district
 				#end query
 			) AS b
@@ -1268,7 +1361,6 @@ FROM (
 		LEFT JOIN (
 			#this is our query for getting the population for each census block
 			#and calculating an appropriate weight
-			#2,749 results -> 40 precincts for district 1, 20 precincts for district 2
 			SELECT c.precinct_id,
 				c.district,
 				c.2010_subgroup_pop,
@@ -1276,7 +1368,6 @@ FROM (
 				ROUND((c.2010_subgroup_pop / d.2010_total_pop) * 100,1) AS weight
 			FROM (
 				#query to join the census block files and total the population for each precinct
-				#2,749 rows - no duplicates
 				SELECT district,
 					CONCAT(block_to_precinct.state_fips, block_to_precinct.county_fips, block_to_precinct.precinct) as precinct_id,
 					SUM(nc000012010.P0010001) as 2010_subgroup_pop
@@ -1296,7 +1387,6 @@ FROM (
 			) as c
 			LEFT JOIN (
 				#query to get the total population of each precinct, based on the block
-				#2,708 results
 				SELECT CONCAT(block_to_precinct.state_fips, block_to_precinct.county_fips, block_to_precinct.precinct) as precinct_id,
 					SUM(nc000012010.P0010001) as 2010_total_pop
 				FROM geo_header
@@ -1326,13 +1416,10 @@ FROM (
 #end dem_candidate query
 LEFT JOIN (
 	#query to combine our votes with our districts and roll up
-	#121 results -> note: we are limiting this to precinct so we can examine...
-	#for district 1, displays 40 precincts
 	SELECT x.district as house_district,
 		SUM(corrected_votes.adjusted_votes) AS gop_votes
 	FROM (
 		#query to match our precinct_id to our district through our block
-		#2,749 results -> 40 precincts for district 1, 20 precincts for district 2
 		SELECT DISTINCT CONCAT(LEFT(2019_house_baf.block,5), block_to_precinct.precinct) as precinct_id,
 			2019_house_baf.district
 		FROM 2019_house_baf
@@ -1341,7 +1428,6 @@ LEFT JOIN (
 		) as x
 	LEFT JOIN (
 		#query to combine our corrected vote totals for dem_candidate
-		#2,688 results - includes duplicates -> gives us 37 precincts for district 1, 18 precincts for district 2
 		SELECT q1.precinct_id, 
 			q1.district, 
 			q1.gop_votes,
@@ -1349,18 +1435,16 @@ LEFT JOIN (
 			ROUND(q1.gop_votes * ( IF(q2.weight IS NULL, 100, q2.weight) / 100) ) as adjusted_votes
 		FROM (
 			#initial query to join the number of candidates votes with precinct and district
-			#2,688 rows - contains duplicates and duplicate values for candidate votes for split precinct-district pairs
 			SELECT a.precinct_id,
 				b.district, 
 				a.gop_votes
 			FROM (
 				#query to link the precinct ID to the total vote count of the given candidate from results file
 				SELECT x.precinct_id, 
-					SUM(2016_results.votes) AS gop_votes, 
+					SUM(2016_results_correx.votes) AS gop_votes, 
 					COUNT(x.precinct_id) AS precinct_count
 				FROM (
 					#query to link precinct_id with each district
-					#this is where we were double counting, removed district from distinct
 					SELECT DISTINCT CONCAT(LEFT(2019_house_baf.block,5),
 						block_to_precinct.precinct) as precinct_id
 					FROM 2019_house_baf
@@ -1368,21 +1452,19 @@ LEFT JOIN (
 					ON 2019_house_baf.block = block_to_precinct.block_id
 					#end query
 				) as x
-				LEFT JOIN 2016_results
-				ON 2016_results.precinct_id = x.precinct_id
-				WHERE 2016_results.candidate_name = @gop_candidate
+				LEFT JOIN 2016_results_correx
+				ON 2016_results_correx.precinct_id = x.precinct_id
+				WHERE 2016_results_correx.candidate_name = @gop_candidate
+				#AND 2016_results_correx.derived = 0
 				GROUP BY x.precinct_id
 				#end query
 			) as a
 			LEFT JOIN (
 				#query to link precinct_id with district
-				#only difference is that this is grouped by precinct and district
-				#2,688 results - contains duplicate rows with different districts
 				SELECT x.precinct_id,
 					x.district
 				FROM (
 					#query to link precinct_id with each district (dupe of above)
-					#2,749 results - no duplciate precinct-district pairs
 					SELECT DISTINCT CONCAT(LEFT(2019_house_baf.block,5),
 						block_to_precinct.precinct) as precinct_id,
 						2019_house_baf.district
@@ -1391,9 +1473,10 @@ LEFT JOIN (
 					ON 2019_house_baf.block = block_to_precinct.block_id
 					#end query
 				) AS x
-				LEFT JOIN 2016_results
-				ON 2016_results.precinct_id = x.precinct_id
-				WHERE 2016_results.candidate_name = @gop_candidate
+				LEFT JOIN 2016_results_correx
+				ON 2016_results_correx.precinct_id = x.precinct_id
+				WHERE 2016_results_correx.candidate_name = @gop_candidate
+				#AND 2016_results_correx.derived = 0
 				GROUP BY x.precinct_id, x.district
 				#end query
 			) AS b
@@ -1403,7 +1486,6 @@ LEFT JOIN (
 		LEFT JOIN (
 			#this is our query for getting the population for each census block
 			#and calculating an appropriate weight
-			#2,749 results -> 40 precincts for district 1, 20 precincts for district 2
 			SELECT c.precinct_id,
 				c.district,
 				c.2010_subgroup_pop,
@@ -1411,7 +1493,6 @@ LEFT JOIN (
 				ROUND((c.2010_subgroup_pop / d.2010_total_pop) * 100,1) AS weight
 			FROM (
 				#query to join the census block files and total the population for each precinct
-				#2,749 rows - no duplicates
 				SELECT district,
 					CONCAT(block_to_precinct.state_fips, block_to_precinct.county_fips, block_to_precinct.precinct) as precinct_id,
 					SUM(nc000012010.P0010001) as 2010_subgroup_pop
@@ -1431,7 +1512,6 @@ LEFT JOIN (
 			) as c
 			LEFT JOIN (
 				#query to get the total population of each precinct, based on the block
-				#2,708 results
 				SELECT CONCAT(block_to_precinct.state_fips, block_to_precinct.county_fips, block_to_precinct.precinct) as precinct_id,
 					SUM(nc000012010.P0010001) as 2010_total_pop
 				FROM geo_header
@@ -1470,13 +1550,10 @@ SELECT dem_candidate.senate_district,
 	IF( ROUND((dem_candidate.dem_votes / (dem_candidate.dem_votes + gop_candidate.gop_votes)) * 100,1) > 50, 1, 0) AS dem_win
 FROM (
 	#query to combine our votes with our districts and roll up
-	#121 results -> note: we are limiting this to precinct so we can examine...
-	#for district 1, displays 40 precincts
 	SELECT x.district as senate_district,
 		SUM(corrected_votes.adjusted_votes) AS dem_votes
 	FROM (
 		#query to match our precinct_id to our district through our block
-		#2,749 results -> 40 precincts for district 1, 20 precincts for district 2
 		SELECT DISTINCT CONCAT(LEFT(2019_senate_baf.block,5), block_to_precinct.precinct) as precinct_id,
 			2019_senate_baf.district
 		FROM 2019_senate_baf
@@ -1485,7 +1562,6 @@ FROM (
 		) as x
 	LEFT JOIN (
 		#query to combine our corrected vote totals for dem_candidate
-		#2,688 results - includes duplicates -> gives us 37 precincts for district 1, 18 precincts for district 2
 		SELECT q1.precinct_id, 
 			q1.district, 
 			q1.dem_votes,
@@ -1493,18 +1569,16 @@ FROM (
 			ROUND(q1.dem_votes * ( IF(q2.weight IS NULL, 100, q2.weight) / 100) ) as adjusted_votes
 		FROM (
 			#initial query to join the number of candidates votes with precinct and district
-			#2,688 rows - contains duplicates and duplicate values for candidate votes for split precinct-district pairs
 			SELECT a.precinct_id,
 				b.district, 
 				a.dem_votes
 			FROM (
 				#query to link the precinct ID to the total vote count of the given candidate from results file
 				SELECT x.precinct_id, 
-					SUM(2016_results.votes) AS dem_votes, 
+					SUM(2016_results_correx.votes) AS dem_votes, 
 					COUNT(x.precinct_id) AS precinct_count
 				FROM (
 					#query to link precinct_id with each district
-					#this is where we were double counting, removed district from distinct
 					SELECT DISTINCT CONCAT(LEFT(2019_senate_baf.block,5),
 						block_to_precinct.precinct) as precinct_id
 					FROM 2019_senate_baf
@@ -1512,21 +1586,18 @@ FROM (
 					ON 2019_senate_baf.block = block_to_precinct.block_id
 					#end query
 				) as x
-				LEFT JOIN 2016_results
-				ON 2016_results.precinct_id = x.precinct_id
-				WHERE 2016_results.candidate_name = @dem_candidate
+				LEFT JOIN 2016_results_correx
+				ON 2016_results_correx.precinct_id = x.precinct_id
+				WHERE 2016_results_correx.candidate_name = @dem_candidate
 				GROUP BY x.precinct_id
 				#end query
 			) as a
 			LEFT JOIN (
 				#query to link precinct_id with district
-				#only difference is that this is grouped by precinct and district
-				#2,688 results - contains duplicate rows with different districts
 				SELECT x.precinct_id,
 					x.district
 				FROM (
 					#query to link precinct_id with each district (dupe of above)
-					#2,749 results - no duplciate precinct-district pairs
 					SELECT DISTINCT CONCAT(LEFT(2019_senate_baf.block,5),
 						block_to_precinct.precinct) as precinct_id,
 						2019_senate_baf.district
@@ -1535,9 +1606,9 @@ FROM (
 					ON 2019_senate_baf.block = block_to_precinct.block_id
 					#end query
 				) AS x
-				LEFT JOIN 2016_results
-				ON 2016_results.precinct_id = x.precinct_id
-				WHERE 2016_results.candidate_name = @dem_candidate
+				LEFT JOIN 2016_results_correx
+				ON 2016_results_correx.precinct_id = x.precinct_id
+				WHERE 2016_results_correx.candidate_name = @dem_candidate
 				GROUP BY x.precinct_id, x.district
 				#end query
 			) AS b
@@ -1547,7 +1618,6 @@ FROM (
 		LEFT JOIN (
 			#this is our query for getting the population for each census block
 			#and calculating an appropriate weight
-			#2,749 results -> 40 precincts for district 1, 20 precincts for district 2
 			SELECT c.precinct_id,
 				c.district,
 				c.2010_subgroup_pop,
@@ -1555,7 +1625,6 @@ FROM (
 				ROUND((c.2010_subgroup_pop / d.2010_total_pop) * 100,1) AS weight
 			FROM (
 				#query to join the census block files and total the population for each precinct
-				#2,749 rows - no duplicates
 				SELECT district,
 					CONCAT(block_to_precinct.state_fips, block_to_precinct.county_fips, block_to_precinct.precinct) as precinct_id,
 					SUM(nc000012010.P0010001) as 2010_subgroup_pop
@@ -1575,7 +1644,6 @@ FROM (
 			) as c
 			LEFT JOIN (
 				#query to get the total population of each precinct, based on the block
-				#2,708 results
 				SELECT CONCAT(block_to_precinct.state_fips, block_to_precinct.county_fips, block_to_precinct.precinct) as precinct_id,
 					SUM(nc000012010.P0010001) as 2010_total_pop
 				FROM geo_header
@@ -1605,13 +1673,10 @@ FROM (
 #end dem_candidate query
 LEFT JOIN (
 	#query to combine our votes with our districts and roll up
-	#121 results -> note: we are limiting this to precinct so we can examine...
-	#for district 1, displays 40 precincts
 	SELECT x.district as senate_district,
 		SUM(corrected_votes.adjusted_votes) AS gop_votes
 	FROM (
 		#query to match our precinct_id to our district through our block
-		#2,749 results -> 40 precincts for district 1, 20 precincts for district 2
 		SELECT DISTINCT CONCAT(LEFT(2019_senate_baf.block,5), block_to_precinct.precinct) as precinct_id,
 			2019_senate_baf.district
 		FROM 2019_senate_baf
@@ -1620,7 +1685,6 @@ LEFT JOIN (
 		) as x
 	LEFT JOIN (
 		#query to combine our corrected vote totals for dem_candidate
-		#2,688 results - includes duplicates -> gives us 37 precincts for district 1, 18 precincts for district 2
 		SELECT q1.precinct_id, 
 			q1.district, 
 			q1.gop_votes,
@@ -1628,18 +1692,16 @@ LEFT JOIN (
 			ROUND(q1.gop_votes * ( IF(q2.weight IS NULL, 100, q2.weight) / 100) ) as adjusted_votes
 		FROM (
 			#initial query to join the number of candidates votes with precinct and district
-			#2,688 rows - contains duplicates and duplicate values for candidate votes for split precinct-district pairs
 			SELECT a.precinct_id,
 				b.district, 
 				a.gop_votes
 			FROM (
 				#query to link the precinct ID to the total vote count of the given candidate from results file
 				SELECT x.precinct_id, 
-					SUM(2016_results.votes) AS gop_votes, 
+					SUM(2016_results_correx.votes) AS gop_votes, 
 					COUNT(x.precinct_id) AS precinct_count
 				FROM (
 					#query to link precinct_id with each district
-					#this is where we were double counting, removed district from distinct
 					SELECT DISTINCT CONCAT(LEFT(2019_senate_baf.block,5),
 						block_to_precinct.precinct) as precinct_id
 					FROM 2019_senate_baf
@@ -1647,21 +1709,18 @@ LEFT JOIN (
 					ON 2019_senate_baf.block = block_to_precinct.block_id
 					#end query
 				) as x
-				LEFT JOIN 2016_results
-				ON 2016_results.precinct_id = x.precinct_id
-				WHERE 2016_results.candidate_name = @gop_candidate
+				LEFT JOIN 2016_results_correx
+				ON 2016_results_correx.precinct_id = x.precinct_id
+				WHERE 2016_results_correx.candidate_name = @gop_candidate
 				GROUP BY x.precinct_id
 				#end query
 			) as a
 			LEFT JOIN (
 				#query to link precinct_id with district
-				#only difference is that this is grouped by precinct and district
-				#2,688 results - contains duplicate rows with different districts
 				SELECT x.precinct_id,
 					x.district
 				FROM (
 					#query to link precinct_id with each district (dupe of above)
-					#2,749 results - no duplciate precinct-district pairs
 					SELECT DISTINCT CONCAT(LEFT(2019_senate_baf.block,5),
 						block_to_precinct.precinct) as precinct_id,
 						2019_senate_baf.district
@@ -1670,9 +1729,9 @@ LEFT JOIN (
 					ON 2019_senate_baf.block = block_to_precinct.block_id
 					#end query
 				) AS x
-				LEFT JOIN 2016_results
-				ON 2016_results.precinct_id = x.precinct_id
-				WHERE 2016_results.candidate_name = @gop_candidate
+				LEFT JOIN 2016_results_correx
+				ON 2016_results_correx.precinct_id = x.precinct_id
+				WHERE 2016_results_correx.candidate_name = @gop_candidate
 				GROUP BY x.precinct_id, x.district
 				#end query
 			) AS b
@@ -1682,7 +1741,6 @@ LEFT JOIN (
 		LEFT JOIN (
 			#this is our query for getting the population for each census block
 			#and calculating an appropriate weight
-			#2,749 results -> 40 precincts for district 1, 20 precincts for district 2
 			SELECT c.precinct_id,
 				c.district,
 				c.2010_subgroup_pop,
@@ -1690,7 +1748,6 @@ LEFT JOIN (
 				ROUND((c.2010_subgroup_pop / d.2010_total_pop) * 100,1) AS weight
 			FROM (
 				#query to join the census block files and total the population for each precinct
-				#2,749 rows - no duplicates
 				SELECT district,
 					CONCAT(block_to_precinct.state_fips, block_to_precinct.county_fips, block_to_precinct.precinct) as precinct_id,
 					SUM(nc000012010.P0010001) as 2010_subgroup_pop
@@ -1710,7 +1767,6 @@ LEFT JOIN (
 			) as c
 			LEFT JOIN (
 				#query to get the total population of each precinct, based on the block
-				#2,708 results
 				SELECT CONCAT(block_to_precinct.state_fips, block_to_precinct.county_fips, block_to_precinct.precinct) as precinct_id,
 					SUM(nc000012010.P0010001) as 2010_total_pop
 				FROM geo_header

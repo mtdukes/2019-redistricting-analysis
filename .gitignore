@@ -1,4 +1,7 @@
 #Ignore these directories
+results/ #for now
 
 #ignore these files
 .DS_Store
+*.xlsx #for now
+*.csv #for now

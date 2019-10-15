@@ -1,0 +1,21 @@
+Summary stats
+
+U.S. President
+House	48
+Senate	22
+
+U.S. Senate
+House	42
+Senate	18
+
+N.C. Governor
+House	51
+Senate	22
+
+N.C. Lt. Governor
+House	43
+Senate	17
+
+N.C. Attorney General
+House	53
+Senate	24
