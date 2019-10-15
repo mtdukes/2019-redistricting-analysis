@@ -1,5 +1,5 @@
 #Ignore these directories
-results/ #for now
+results/* #for now
 
 #ignore these files
 .DS_Store
