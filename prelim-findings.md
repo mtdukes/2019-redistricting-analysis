@@ -24,7 +24,7 @@ _PLEASE NOTE: These findings are preliminary and still subject to review and cha
 
 Below is a histogram of the ensemble performance of N.C. House maps, according to research from Jonathan Mattingly of Duke University. Performance of the `2018 maps` and the redrawn **2019 maps** is marked below.
 | Ds elected | President | US Senate | Governor | Lt Governor | Att Gen |
-|:----------|-----------:|--------:|--------:|--------:|----------:|
+|:---|---:|---:|---:|---:|---:|
 | 35 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
 | 36 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
 | 37 | 0.000 | 0.001 | 0.000 | 0.001 | 0.000 |
