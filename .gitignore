@@ -1,7 +1,7 @@
 #Ignore these directories
-results/* #for now
+results
 
 #ignore these files
 .DS_Store
-*.xlsx #for now
-*.csv #for now
+*.xlsx
+*.csv
