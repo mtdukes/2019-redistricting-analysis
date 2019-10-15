@@ -1,9 +1,10 @@
+
 ## Preliminary findings
 _PLEASE NOTE: These findings are preliminary and still subject to review and change._
 
 In arguments that led to the latest court-ordered redraw of North Carolina's legislative maps, attorneys for the voters suing the state argued that many House and Senate districts were skewed too far in favor of Republicans. A three-judge panel agreed, writing that the maps amounted to a partisan gerrymander that violated the North Carolina constitution.
 
-Expert witness and Duke University Mathematics Professor Jonathan Mattingly used thousands of automatically generated maps to resort votes from several statewide elections. That generated distributions of how often Republican or Democratic candidates would win in differently carved up districts.
+Expert witness and Duke University Mathematics Professor Jonathan Mattingly [used thousands of automatically generated maps](https://sites.duke.edu/quantifyinggerrymandering/files/2019/09/Report.pdf) ([corrections listed here](https://sites.duke.edu/quantifyinggerrymandering/files/2019/09/Rebuttal.pdf)) to resort votes from several statewide elections. That generated distributions of how often Republican or Democratic candidates would win in differently carved up districts.
 
 Those distributions, judges said, helped demonstrate how the actual maps performed relative to what's "normal."
 
