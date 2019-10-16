@@ -3,6 +3,8 @@
 
 WRAL News used Census, 2016 election results and data published by a team of mathematicians at Duke University in the Common Cause v. Lewis case to analyze newly drawn districts approved by the N.C. General Assembly following a court order in September 2019.
 
+_PLEASE NOTE: The following represents a work in progress._
+
 ## Findings
 
 [See preliminary findings](https://github.com/mtdukes/2019-redistricting-analysis/blob/master/prelim-findings.md)
@@ -17,13 +19,13 @@ _PLEASE NOTE: These findings are preliminary and still subject to review and cha
  
 - **[Block assignment file for redrawn 2019 Senate maps](https://www.ncleg.gov/documentsites/committees/senate2019-154/Senate%20Consensus%20Nonpartisan%20Map/Senate%20Consensus%20Nonpartisan%20Map%20v3_BlockFile.zip)** File mapping Census blocks to newly drawn Senate districts.  Published by the N.C. Senate Committee on Redistricting and Elections
 
-- **N.C. State Board of Elections block-to-precinct file** File mapping Census blocks to precinct used in election results. Provided to WRAL News upon request on Sept. 17, 2019, by the State Board of Elections
+- **[N.C. State Board of Elections block-to-precinct file](https://github.com/mtdukes/2019-redistricting-analysis/blob/master/source_data/NC_VTD_WholeBlock_20190531.csv)** File mapping Census blocks to precinct used in election results. Provided to WRAL News upon request on Sept. 17, 2019, by the State Board of Elections
 
 - **[2016 election results "precinct sort" file](https://dl.ncsbe.gov/index.html?prefix=Requests/Dukes_Tyler/2016-11-08/)** Contains election results sorted into precincts by staff at the State Board of Elections. Provided to WRAL News upon request on Sept. 26, 2019
 
 - **Ensemble election performance data for House/Senate maps** Data showing the distribution of elected Democrats for various races from 2008 to 2016, according to vote totals calculated for thousands of computer-generated district maps by a Duke University team of mathematicians and submitted as an expert report to the court in Common Cause v. Lewis. House ensemble scores are available in the [original expert report](https://sites.duke.edu/quantifyinggerrymandering/files/2019/09/Report.pdf) (Page 48). A corrected Senate version is available [in an addendum](https://sites.duke.edu/quantifyinggerrymandering/files/2019/09/Rebuttal.pdf) (Page 28).
 
-- **Weights for Mecklenburg County** Data derived from a ballot style report produced by the State Board of Elections for ballot styles in Mecklenburg County. Used to predict and resort the unsorted votes from Mecklenburg County using the relative percentage of active voters in each precinct.
+- **[Weights for Mecklenburg County](https://github.com/mtdukes/2019-redistricting-analysis/blob/master/source_data/mecklenburg_unsorted_weights.csv)** Data derived from a ballot style report produced by the State Board of Elections for ballot styles in Mecklenburg County. Used to predict and resort the unsorted votes from Mecklenburg County using the relative percentage of active voters in each precinct.
 
 ## Methodology
 
