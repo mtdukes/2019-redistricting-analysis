@@ -1,7 +1,5 @@
 #Ignore these directories
-results
+
 
 #ignore these files
 .DS_Store
-*.xlsx
-*.csv
