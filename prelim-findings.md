@@ -12,11 +12,11 @@ Those distributions, judges said, helped demonstrate how the actual maps perform
 
 ### Overview
 
-Based on our preliminary analysis so far, the remedial maps drawn in 2019 show an average gain of 3.4 Democratic wins in the North Carolina House and 2.8 Democratic wins in the North Carolina Senate, compared to the previous versions of the two chambers' maps.
+Based on our preliminary analysis so far, the remedial maps drawn in 2019 show an average gain of 3.6 Democratic wins in the North Carolina House and 2.8 Democratic wins in the North Carolina Senate, compared to the previous versions of the two chambers' maps.
 
-Given that average - and using 2016 election data - the new maps would yield an average of about 47 Democratic seats in the N.C. House (out of 120) and an average of about 21 Democratic seats in the N.C. Senate (out of 50).
+Given that average - and using 2016 election data - the new maps would yield an average of about 48 Democratic seats in the N.C. House (out of 120) and an average of about 21 Democratic seats in the N.C. Senate (out of 50).
 
-On average using 2016 data, the new House maps produce as many Democratic wins as about 63 percent of the ensemble maps. That's compared to about 12 percent of the ensemble maps in the old version.
+On average using 2016 data, the new House maps produce as many Democratic wins as about 68 percent of the ensemble maps. That's compared to about 12 percent of the ensemble maps in the old version.
 
 On average using 2016 data, the new Senate maps produce as many Democratic wins as about 75 percent of the ensemble maps. That's compared to about 0.04 percent of the ensemble maps in the old version.
 
@@ -34,8 +34,8 @@ Below is a histogram of the ensemble performance of N.C. House maps, according t
 | 39 | 0.000 | 0.180 | 0.000 | 0.230 | 0.000 |
 | 40 | 0.000 | 1.500 | 0.000 | 1.830 | 0.000 |
 | 41 | 0.001 | 6.640 | 0.000 | 7.950 | 0.000 |
-| 42 | 0.010 | **`16.800`** | 0.000 | `19.300` | 0.000 |
-| 43 | 0.070 | 25.800 | 0.000 | **27.500** | 0.000 |
+| 42 | 0.010 | `16.800` | 0.000 | `19.300` | 0.000 |
+| 43 | 0.070 | **25.800** | 0.000 | **27.500** | 0.000 |
 | 44 | 0.810 | 24.900 | 0.000 | 23.900 | `0.010` |
 | 45 | `4.580` | 15.600 | 0.010 | 13.100 | 0.040 |
 | 46 | 14.200 | 6.390 | 0.050 | 4.680 | 0.510 |

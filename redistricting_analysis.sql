@@ -1268,6 +1268,7 @@ HAVING votes > 0;
 
 #our resulting query tallying up the votes from the 2016 election results and tying them
 #back to each individual Census block and susequent new House district
+#version below CORRECTS dem_win rounding error
 #run the top two select statements first to set your candidates appropriately
 SELECT @dem_candidate := 'Roy Cooper';
 SELECT @gop_candidate := 'Pat McCrory';
@@ -1288,7 +1289,7 @@ SELECT dem_candidate.house_district,
 	dem_candidate.dem_votes,
 	gop_candidate.gop_votes,
 	ROUND((dem_candidate.dem_votes / (dem_candidate.dem_votes + gop_candidate.gop_votes)) * 100,1) AS dem_pct,
-	IF( ROUND((dem_candidate.dem_votes / (dem_candidate.dem_votes + gop_candidate.gop_votes)) * 100,1) > 50, 1, 0) AS dem_win
+	IF( dem_candidate.dem_votes > gop_candidate.gop_votes, 1, 0) AS dem_win
 FROM (
 	#query to combine our votes with our districts and roll up
 	SELECT x.district as house_district,
@@ -1543,11 +1544,12 @@ ON dem_candidate.house_district = gop_candidate.house_district
 ORDER BY CAST(gop_candidate.house_district AS SIGNED);
 
 #our senate analysis doing the same, relying on the same variables as above
+#version below CORRECTS dem_win rounding error
 SELECT dem_candidate.senate_district,
 	dem_candidate.dem_votes,
 	gop_candidate.gop_votes,
 	ROUND((dem_candidate.dem_votes / (dem_candidate.dem_votes + gop_candidate.gop_votes)) * 100,1) AS dem_pct,
-	IF( ROUND((dem_candidate.dem_votes / (dem_candidate.dem_votes + gop_candidate.gop_votes)) * 100,1) > 50, 1, 0) AS dem_win
+	IF( dem_candidate.dem_votes > gop_candidate.gop_votes, 1, 0) AS dem_win
 FROM (
 	#query to combine our votes with our districts and roll up
 	SELECT x.district as senate_district,
