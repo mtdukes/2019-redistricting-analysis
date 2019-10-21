@@ -1,6 +1,5 @@
 
-## Preliminary findings
-_PLEASE NOTE: These findings are preliminary and still subject to review and change._
+## Findings
 
 In arguments that led to the latest court-ordered redraw of North Carolina's legislative maps, attorneys for the voters suing the state argued that many House and Senate districts were skewed too far in favor of Republicans. A three-judge panel agreed, writing that the maps amounted to a partisan gerrymander that violated the North Carolina constitution.
 
@@ -12,7 +11,7 @@ Those distributions, judges said, helped demonstrate how the actual maps perform
 
 ### Overview
 
-Based on our preliminary analysis so far, the remedial maps drawn in 2019 show an average gain of 3.6 Democratic wins in the North Carolina House and 2.8 Democratic wins in the North Carolina Senate, compared to the previous versions of the two chambers' maps.
+Based on our analysis, the remedial maps drawn in 2019 show an average gain of 3.6 Democratic wins in the North Carolina House and 2.8 Democratic wins in the North Carolina Senate, compared to the previous versions of the two chambers' maps.
 
 Given that average - and using 2016 election data - the new maps would yield an average of about 48 Democratic seats in the N.C. House (out of 120) and an average of about 21 Democratic seats in the N.C. Senate (out of 50).
 
@@ -21,7 +20,6 @@ On average using 2016 data, the new House maps produce as many Democratic wins a
 On average using 2016 data, the new Senate maps produce as many Democratic wins as about 75 percent of the ensemble maps. That's compared to about 0.04 percent of the ensemble maps in the old version.
 
 ### House maps
-_PLEASE NOTE: These findings are preliminary and still subject to review and change._
 
 Below is a histogram of the ensemble performance of N.C. House maps, according to research from Jonathan Mattingly of Duke University. Performance of the `2018 maps` and the redrawn **2019 maps** is marked below.
 
@@ -55,7 +53,6 @@ Below is a histogram of the ensemble performance of N.C. House maps, according t
 | 60 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
 
 ### Senate maps
-_PLEASE NOTE: These findings are preliminary and still subject to review and change._
 
 Below is a histogram of the ensemble performance of N.C. Senate maps, according to research from Jonathan Mattingly of Duke University. Performance of the `2018 maps` and the redrawn **2019 maps** is marked below.
 
@@ -74,5 +71,3 @@ Below is a histogram of the ensemble performance of N.C. Senate maps, according 
 | 24 | 0 | 0 | 0 | 0 | **26.2** |
 | 25 | 0 | 0 | 0 | 0 | 0 |
 | 26 | 0 | 0 | 0 | 0 | 0 |
-
-_PLEASE NOTE: These findings are preliminary and still subject to review and change._

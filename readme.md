@@ -3,13 +3,9 @@
 
 WRAL News used Census, 2016 election results and data published by a team of mathematicians at Duke University in the Common Cause v. Lewis case to analyze newly drawn districts approved by the N.C. General Assembly following a court order in September 2019.
 
-_PLEASE NOTE: The following represents a work in progress._
-
 ## Findings
 
-[See preliminary findings](https://github.com/mtdukes/2019-redistricting-analysis/blob/master/prelim-findings.md)
-
-_PLEASE NOTE: These findings are preliminary and still subject to review and change._
+[See findings](https://github.com/mtdukes/2019-redistricting-analysis/blob/master/prelim-findings.md)
 
 ## Data
 
